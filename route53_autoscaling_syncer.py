@@ -2,6 +2,7 @@
 
 __version__ = '0.1'
 
+import argparse
 import datetime
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 import logging
@@ -73,14 +74,14 @@ def main(interval, region, group_name, zone, dns_name):
             reservations = ec2_conn.get_all_reservations(instances_ids)
             instances = [i for r in reservations for i in r.instances]
             ips = [i.private_ip_address for i in instances]
-            logging.error('ips: ' + repr(ips))
+            logging.debug('ips: ' + repr(ips))
             if len(ips) > 0:
                 c = boto.route53.record.ResourceRecordSets(r53_conn, z.id)
                 change = c.add_change("UPSERT", dns_name, type="A", ttl=90)
                 for ip in ips:
                     change.add_value(ip)
                 c.commit()
-                logging.error('updated ips')
+                logging.debug('updated ips')
             last_success_lock.acquire()
             try:
                 last_success = datetime.datetime.utcnow()
@@ -92,9 +93,27 @@ def main(interval, region, group_name, zone, dns_name):
             continue
 
 
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--interface', help='Interface to which to bind',
+                        type=str, default='0.0.0.0')
+    parser.add_argument('--port', help='Port to which to bind',
+                        type=int, required=True)
+    parser.add_argument('--region', help='AWS region',
+                        type=str, required=True)
+    parser.add_argument('--autoscaling-group', type=str, required=True)
+    parser.add_argument('--interval', help='How frequently to run (s)',
+                        type=int, required=True)
+    parser.add_argument('--zone', type=str, required=True)
+    parser.add_argument('--domain', type=str, required=True)
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
-    host, port = '0.0.0.0', 80
-    t_main = Thread(target=main, args=(10, 'us-east-1', 'kinesauce-test3-KinesauceASG-1UQX1A494UOEY', 'rundsp.com', 'aoeu.rundsp.com'))
+    args = get_args()
+    t_main = Thread(target=main,
+                    args=(args.interval, args.region, args.autoscaling_group,
+                          args.zone, args.domain))
     t_main.daemon = True
     t_main.start()
-    start_health_check_server(host, port)
+    start_health_check_server(args.interface, args.port)
