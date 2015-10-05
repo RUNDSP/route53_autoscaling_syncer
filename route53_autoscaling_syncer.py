@@ -8,13 +8,19 @@ import logging
 from threading import Lock, Thread
 import time
 
+import boto
+import boto.ec2
+import boto.ec2.autoscale
+import boto.route53
+import boto.route53.record
+
 
 logger = logging.getLogger(__name__)
 
 
 last_success = None
 last_success_lock = Lock()
-max_seconds_healthy = 30
+max_seconds_healthy = 15
 
 
 class HealthCheckHTTPRequestHandler(BaseHTTPRequestHandler):
@@ -46,29 +52,49 @@ class HealthCheckHTTPRequestHandler(BaseHTTPRequestHandler):
         return None
 
 
-def start_health_check_server():
+def start_health_check_server(host, port):
     logging.basicConfig()
     logging.error('starting server')
-    server = HTTPServer(('0.0.0.0', 80), HealthCheckHTTPRequestHandler)
+    server = HTTPServer((host, port), HealthCheckHTTPRequestHandler)
     server.serve_forever()
 
 
-def main(interval):
+def main(interval, region, group_name, zone, dns_name):
     global last_success
     logging.basicConfig()
+    ec2_conn = boto.ec2.connect_to_region(region)
+    as_conn = boto.ec2.autoscale.connect_to_region(region)
+    r53_conn = boto.route53.connect_to_region(region)
+    z = r53_conn.get_zone(zone)
     while True:
-        # TODO
-        logging.error('doing it')
-        last_success_lock.acquire()
         try:
-            last_success = datetime.datetime.utcnow()
-        finally:
-            last_success_lock.release()
-        time.sleep(interval)
+            group = as_conn.get_all_groups([group_name])[0]
+            instances_ids = [i.instance_id for i in group.instances]
+            reservations = ec2_conn.get_all_reservations(instances_ids)
+            instances = [i for r in reservations for i in r.instances]
+            ips = [i.private_ip_address for i in instances]
+            logging.error('ips: ' + repr(ips))
+            if len(ips) > 0:
+                c = boto.route53.record.ResourceRecordSets(r53_conn, z.id)
+                change = c.add_change("UPSERT", dns_name, type="A", ttl=90)
+                for ip in ips:
+                    change.add_value(ip)
+                c.commit()
+                logging.error('updated ips')
+            last_success_lock.acquire()
+            try:
+                last_success = datetime.datetime.utcnow()
+            finally:
+                last_success_lock.release()
+            time.sleep(interval)
+        except ex:
+            logger.error('Exception caught: ' + ex.message)
+            continue
 
 
 if __name__ == '__main__':
-    t_main = Thread(target=main, args=(5,))
+    host, port = '0.0.0.0', 80
+    t_main = Thread(target=main, args=(10, 'us-east-1', 'kinesauce-test3-KinesauceASG-1UQX1A494UOEY', 'rundsp.com', 'aoeu.rundsp.com'))
     t_main.daemon = True
     t_main.start()
-    start_health_check_server()
+    start_health_check_server(host, port)
