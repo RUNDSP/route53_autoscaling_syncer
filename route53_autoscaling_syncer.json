@@ -62,7 +62,7 @@
       },
       "UpdatePolicy": {
         "AutoScalingRollingUpdate": {
-          "MaxBatchSize": "1"
+          "MaxBatchSize": "1000"
         }
       },
       "Type": "AWS::AutoScaling::AutoScalingGroup"
@@ -130,14 +130,59 @@
               }
             },
             "files": {
-              "/etc/init/route53_autoscaling_syncer_us.conf": {
+              "/etc/init.d/route53_autoscaling_syncer": {
                 "content": {"Fn::Join": ["", [
-                  "start on runlevel [2345]\n",
-                  "stop on runlevel [016]\n\n",
-                  "respawn\n",
-                  "exec python ",
-                    "/route53_autoscaling_syncer/route53_autoscaling_syncer.py ",
-                    ""
+                  "#!/bin/bash\n",
+                  "start () {\n",
+                  "  echo \"starting route53_autoscaling_syncer\"\n",
+                  "  python /route53_autoscaling_syncer/route53_autoscaling_syncer.py",
+                  "    --interface 0.0.0.0 --port 80 --region ", {"Ref": "AWS::Region"},
+                  "    --autoscaling-group '", {"Ref": "AutoScalingGroupName"}, "'",
+                  "    --interval ", {"Ref": "Interval"},
+                  "    --zone ", {"Ref": "Route53Zone"},
+                  "    --domain ", {"Ref": "Route53RecordName"}, " &\n",
+                  "}\n",
+                  "stop () {\n",
+                  "    echo \"stopping route53_autoscaling_syncer\"\n",
+                  "    kill $(ps aux | grep \"python /route53_autoscaling_syncer/route53_autoscaling_syncer.py\" | awk '{print $2}')\n",
+                  "}\n",
+                  "case \"$1\" in\n",
+                  "  start)\n",
+                  "    start\n",
+                  "    ;;\n",
+                  "  stop)\n",
+                  "    stop\n",
+                  "    ;;\n",
+                  "  restart)\n",
+                  "    stop\n",
+                  "    start\n",
+                  "    ;;\n",
+                  "  *)\n",
+                  "    echo $\"Usage: $0 {start|stop|restart}\"\n",
+                  "    exit 1\n",
+                  "esac\n",
+                  "exit 0\n"
+                ]]},
+                "mode": "000755",
+                "owner": "root",
+                "group": "root"
+              },
+              "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
+                "content": {"Fn::Join": ["", [
+                  "[cfn-auto-reloader-hook]\n",
+                  "triggers=post.update\n",
+                  "path=Resources.LaunchConfig.Metadata.AWS::CloudFormation::Init\n",
+                  "action=/opt/aws/bin/cfn-init -v ",
+                  "         --stack ", {"Ref": "AWS::StackName"},
+                  "         --resource r53asLC ",
+                  "         --region ", {"Ref": "AWS::Region"}, "\n",
+                  "runas=root\n"
+                ]]}
+              },
+              "/etc/cfn/cfn-hup.conf": {
+                "content": {"Fn::Join": ["", [
+                  "[main]\n",
+                  "stack=", {"Ref": "AWS::StackName"}, "\n"
                 ]]}
               }
             },
@@ -146,8 +191,12 @@
                 "route53_autoscaling_syncer": {
                   "enabled" : "true",
                   "ensureRunning" : "true",
-                  "files": ["/etc/init/route53_autoscaling_syncer_us.conf"],
                   "sources": ["/route53_autoscaling_syncer"]
+                },
+                "cfn-hup": {
+                  "enabled": "true",
+                  "ensureRunning": "true",
+                  "files": ["/etc/cfn/cfn-hup.conf", "/etc/cfn/hooks.d/cfn-auto-reloader.conf"]
                 }
               }
             }
@@ -166,14 +215,19 @@
               "",
               [
                 "#!/bin/bash -xe\n",
-                "sudo apt-get update",
-                "sudo apt-get install -y python-setuptools\n",
-                "easy_install https://s3.amazonaws.com/run-infrastructure/cloudformation/aws-cfn-bootstrap-1.4-8.tar.gz\n",
+                "apt-get update\n",
+                "apt-get install -y python-pip\n",
+                "pip install https://s3.amazonaws.com/run-infrastructure/cloudformation/aws-cfn-bootstrap-1.4-8.tar.gz\n",
+                "# Set up cfn-hup to apply future updates to the stack\n",
+                "cp /usr/local/init/ubuntu/cfn-hup /etc/init.d/cfn-hup\n",
+                "chmod +x /etc/init.d/cfn-hup\n",
+                "update-rc.d cfn-hup defaults\n",
+                "service cfn-hup start\n",
                 "# Install files and run the commands from the metadata\n",
-                "sudo cfn-init -v ",
-                "     --stack ", { "Ref" : "AWS::StackName" },
+                "cfn-init -v ",
+                "     --stack ", {"Ref": "AWS::StackName"},
                 "     --resource r53asLC ",
-                "     --region ", { "Ref" : "AWS::Region" }, "\n"
+                "     --region ", {"Ref": "AWS::Region"}, "\n"
               ]
             ]
           }
