@@ -6,6 +6,7 @@ import argparse
 import datetime
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 import logging
+from SocketServer import ThreadingMixIn
 from threading import Lock, Thread
 import time
 
@@ -53,10 +54,14 @@ class HealthCheckHTTPRequestHandler(BaseHTTPRequestHandler):
         return None
 
 
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    pass
+
+
 def start_health_check_server(host, port):
     logging.basicConfig()
     logging.error('starting server')
-    server = HTTPServer((host, port), HealthCheckHTTPRequestHandler)
+    server = ThreadedHTTPServer((host, port), HealthCheckHTTPRequestHandler)
     server.serve_forever()
 
 
