@@ -57,6 +57,7 @@
         "VPCZoneIdentifier": {"Ref": "Subnets"},
         "DesiredCapacity": {"Ref": "ClusterSize"},
         "LaunchConfigurationName": {"Ref": "r53asLC"},
+        "LoadBalancerNames": [{"Ref": "r53asLB"}],
         "MaxSize": 3,
         "MinSize": 1
       },
@@ -242,13 +243,49 @@
         "SecurityGroupIngress": [
           {
             "CidrIp": "0.0.0.0/0",
-            "FromPort": "22",
             "IpProtocol": "tcp",
+            "FromPort": "22",
             "ToPort": "22"
+          },
+          {
+            "SourceSecurityGroupId": {"Ref": "r53asLBSG"},
+            "IpProtocol": "tcp",
+            "FromPort": "80",
+            "ToPort": "80"
           }
         ]
       },
       "Type": "AWS::EC2::SecurityGroup"
+    },
+    "r53asLBSG": {
+      "Properties": {
+        "GroupDescription": "Load balancer security group",
+        "VpcId": {"Ref": "VpcId"}
+      },
+      "Type": "AWS::EC2::SecurityGroup"
+    },
+    "r53asLB": {
+      "Properties": {
+        "Scheme": "internal",
+        "Subnets": {"Ref": "Subnets"},
+        "SecurityGroups": [{"Ref": "r53asLBSG"}],
+        "HealthCheck": {
+          "Target": "HTTP:80/healthcheck",
+          "HealthyThreshold": "2",
+          "UnhealthyThreshold": "2",
+          "Interval": "15",
+          "Timeout": "10"
+        },
+        "Listeners": [
+          {
+            "InstancePort": 80,
+            "Protocol": "HTTP",
+            "LoadBalancerPort": 80
+          }
+        ],
+        "Tags": [{"Key": "Stack", "Value": {"Ref": "AWS::StackName"}}]
+      },
+      "Type": "AWS::ElasticLoadBalancing::LoadBalancer"
     }
   }
 }
