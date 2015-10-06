@@ -35,7 +35,7 @@
     "Interval": {
       "Description": "",
       "Type": "String",
-      "Default": "15"
+      "Default": "10"
     },
     "Route53Zone": {
       "Description": "",
@@ -59,7 +59,9 @@
         "LaunchConfigurationName": {"Ref": "r53asLC"},
         "LoadBalancerNames": [{"Ref": "r53asLB"}],
         "MaxSize": 3,
-        "MinSize": 1
+        "MinSize": 1,
+        "HealthCheckType": "ELB",
+        "HealthCheckGracePeriod": "200"
       },
       "UpdatePolicy": {
         "AutoScalingRollingUpdate": {
