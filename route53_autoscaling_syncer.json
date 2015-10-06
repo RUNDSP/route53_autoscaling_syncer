@@ -1,0 +1,145 @@
+{
+  "Parameters": {
+    "Subnets": {
+      "Description": "",
+      "Type": "CommaDelimitedList"
+    },
+    "VpcId": {
+      "Description": "",
+      "Type": "String"
+    },
+    "ClusterSize": {
+      "Default": "1",
+      "Description": "Number of nodes to launch",
+      "Type": "Number"
+    },
+    "InstanceAmi": {
+      "Default": "ami-d05e75b8",
+      "Description": "Default: Ubuntu 14.04 LTS in us-east-1, ami-d05e75b8",
+      "Type": "String"
+    },
+    "InstanceType": {
+      "Description": "",
+      "Type": "String",
+      "Default": "t2.micro"
+    },
+    "KeyName": {
+      "Default": "default",
+      "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instance",
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "r53asASG": {
+      "Properties": {
+        "VPCZoneIdentifier": {"Ref": "Subnets"},
+        "DesiredCapacity": {"Ref": "ClusterSize"},
+        "LaunchConfigurationName": {"Ref": "r53asLC"},
+        "MaxSize": 3,
+        "MinSize": 1
+      },
+      "UpdatePolicy": {
+        "AutoScalingRollingUpdate": {
+          "MaxBatchSize": "1"
+        }
+      },
+      "Type": "AWS::AutoScaling::AutoScalingGroup"
+    },
+    "r53asIAM": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": ["sts:AssumeRole"],
+              "Effect": "Allow",
+              "Principal": {"Service": ["ec2.amazonaws.com"]}
+            }
+          ]
+        },
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": [
+                    "cloudwatch:*",
+                    "route53:*",
+                    "ec2:*"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": ["*"]
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "r53asiampolicy"
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Role"
+    },
+    "r53asIAMInstanceProfile": {
+      "Properties": {
+        "Path": "/",
+        "Roles": [{"Ref": "r53asIAM"}]
+      },
+      "Type": "AWS::IAM::InstanceProfile"
+    },
+    "r53asLC": {
+      "Metadata": {
+        "AWS::CloudFormation::Init": {
+          "config": {
+            "packages": {
+              "apt": {
+                "make": []
+              }
+            },
+            "sources": {
+            }
+          }
+        }
+      },
+      "Properties": {
+        "IamInstanceProfile": {"Ref": "r53asIAMInstanceProfile"},
+        "ImageId": {"Ref": "InstanceAmi"},
+        "InstanceType": {"Ref": "InstanceType"},
+        "KeyName": {"Ref": "KeyName"},
+        "SecurityGroups": [{"Fn::GetAtt": ["r53asCFSG", "GroupId"]}],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash -xe\n",
+                "sudo apt-get install -y python-setuptools\n",
+                "easy_install https://s3.amazonaws.com/run-infrastructure/cloudformation/aws-cfn-bootstrap-1.4-8.tar.gz\n",
+                "# Install files and run the commands from the metadata\n",
+                "sudo cfn-init -v ",
+                "     --stack ", { "Ref" : "AWS::StackName" },
+                "     --resource r53asLC ",
+                "     --region ", { "Ref" : "AWS::Region" }, "\n"
+              ]
+            ]
+          }
+        }
+      },
+      "Type": "AWS::AutoScaling::LaunchConfiguration"
+    },
+    "r53asCFSG": {
+      "Properties": {
+        "GroupDescription": "Enable SSH access",
+        "VpcId": {"Ref": "VpcId"},
+        "SecurityGroupIngress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": "22",
+            "IpProtocol": "tcp",
+            "ToPort": "22"
+          }
+        ]
+      },
+      "Type": "AWS::EC2::SecurityGroup"
+    }
+  }
+}
