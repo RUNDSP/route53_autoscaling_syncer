@@ -27,6 +27,28 @@
       "Default": "default",
       "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instance",
       "Type": "String"
+    },
+    "AutoScalingGroupName": {
+      "Description": "",
+      "Type": "String"
+    },
+    "Interval": {
+      "Description": "",
+      "Type": "String",
+      "Default": "15"
+    },
+    "Route53Zone": {
+      "Description": "",
+      "Type": "String"
+    },
+    "Route53RecordName": {
+      "Description": "",
+      "Type": "String"
+    },
+    "SourceTarball": {
+      "Description": "",
+      "Type": "String",
+      "Default": "https://github.com/RUNDSP/route53_autoscaling_syncer/tarball/0.1"
     }
   },
   "Resources": {
@@ -63,9 +85,13 @@
               "Statement": [
                 {
                   "Action": [
+                    "autoscaling:DescribeAutoScalingGroups",
+                    "autoscaling:DescribeAutoScalingInstances",
                     "cloudwatch:*",
-                    "route53:*",
-                    "ec2:*"
+                    "ec2:DescribeInstances",
+                    "route53:ChangeResourceRecordSets",
+                    "route53:GetChange",
+                    "route53:ListHostedZones"
                   ],
                   "Effect": "Allow",
                   "Resource": ["*"]
@@ -92,10 +118,38 @@
           "config": {
             "packages": {
               "apt": {
-                "make": []
+                "python-pip": []
               }
             },
             "sources": {
+              "/route53_autoscaling_syncer": {"Ref": "SourceTarball"}
+            },
+            "commands": {
+              "01 install boto": {
+                "command": "sudo pip install boto==2.38.0"
+              }
+            },
+            "files": {
+              "/etc/init/route53_autoscaling_syncer_us.conf": {
+                "content": {"Fn::Join": ["", [
+                  "start on runlevel [2345]\n",
+                  "stop on runlevel [016]\n\n",
+                  "respawn\n",
+                  "exec python ",
+                    "/route53_autoscaling_syncer/route53_autoscaling_syncer.py ",
+                    ""
+                ]]}
+              }
+            },
+            "services": {
+              "sysvinit": {
+                "route53_autoscaling_syncer": {
+                  "enabled" : "true",
+                  "ensureRunning" : "true",
+                  "files": ["/etc/init/route53_autoscaling_syncer_us.conf"],
+                  "sources": ["/route53_autoscaling_syncer"]
+                }
+              }
             }
           }
         }
@@ -112,6 +166,7 @@
               "",
               [
                 "#!/bin/bash -xe\n",
+                "sudo apt-get update",
                 "sudo apt-get install -y python-setuptools\n",
                 "easy_install https://s3.amazonaws.com/run-infrastructure/cloudformation/aws-cfn-bootstrap-1.4-8.tar.gz\n",
                 "# Install files and run the commands from the metadata\n",
