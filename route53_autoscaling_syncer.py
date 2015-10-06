@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 last_success = None
 last_success_lock = Lock()
-max_seconds_healthy = 15
+max_seconds_healthy = 20
 
 
 class HealthCheckHTTPRequestHandler(BaseHTTPRequestHandler):
