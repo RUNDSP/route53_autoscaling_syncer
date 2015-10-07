@@ -6,7 +6,7 @@
 # Assumes you have your ~/.aws/credentials set up with AWS keys
 # or have set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.
 
-# This is for testing purposes -- normally rout53_autoscaling_syncer would be
+# This is for testing purposes -- normally route53_autoscaling_syncer would be
 # included as a child stack in another CloudFormation template.
 
 REGION=us-east-1
