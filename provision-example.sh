@@ -20,7 +20,7 @@ read -r -d '' TEMPLATEPARAMS << EOM
     {"ParameterKey": "ClusterSize", "ParameterValue": "2"},
     {"ParameterKey": "AutoScalingGroupName", "ParameterValue": "my-autoscaling-group-name"},
     {"ParameterKey": "Route53Zone", "ParameterValue": "example.com"},
-    {"ParameterKey": "Route53RecordName", "ParameterValue": "kinesauce.example.com"}
+    {"ParameterKey": "Route53RecordName", "ParameterValue": "myservice.example.com"}
 ]
 EOM
 
