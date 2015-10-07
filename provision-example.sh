@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Usage: some_script_that_calls_this.sh [create|update]
+# Usage: provision-example.sh [create|update]
 # (defaults to create)
 # dependencies: AWS CLI (`aws`, which comes from `pip install awscli>=1.8.8`)
 # Assumes you have your ~/.aws/credentials set up with AWS keys
