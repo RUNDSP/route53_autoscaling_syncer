@@ -121,7 +121,8 @@
           "config": {
             "packages": {
               "apt": {
-                "python-pip": []
+                "python-pip": [],
+                "mosh": []
               }
             },
             "sources": {
@@ -174,7 +175,7 @@
                 "content": {"Fn::Join": ["", [
                   "[cfn-auto-reloader-hook]\n",
                   "triggers=post.update\n",
-                  "path=Resources.LaunchConfig.Metadata.AWS::CloudFormation::Init\n",
+                  "path=Resources.r53asLC.Metadata.AWS::CloudFormation::Init\n",
                   "action=/opt/aws/bin/cfn-init -v ",
                   "         --stack ", {"Ref": "AWS::StackName"},
                   "         --resource r53asLC ",
@@ -248,6 +249,12 @@
             "IpProtocol": "tcp",
             "FromPort": "22",
             "ToPort": "22"
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "IpProtocol": "udp",
+            "FromPort": "60000",
+            "ToPort": "61000"
           },
           {
             "SourceSecurityGroupId": {"Ref": "r53asLBSG"},
