@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-__version__ = '1.1.1'
+__version__ = '1.2'
 
 import argparse
 import datetime
@@ -65,7 +65,7 @@ def start_health_check_server(host, port):
     server.serve_forever()
 
 
-def main(interval, region, group_name, zone, dns_name):
+def main(interval, region, group_name, zone, dns_name, ttl):
     global last_success
     logging.basicConfig()
     ec2_conn = boto.ec2.connect_to_region(region)
@@ -82,7 +82,7 @@ def main(interval, region, group_name, zone, dns_name):
             logging.debug('ips: ' + repr(ips))
             if len(ips) > 0:
                 c = boto.route53.record.ResourceRecordSets(r53_conn, z.id)
-                change = c.add_change("UPSERT", dns_name, type="A", ttl=90)
+                change = c.add_change("UPSERT", dns_name, type="A", ttl=ttl)
                 for ip in ips:
                     change.add_value(ip)
                 c.commit()
@@ -111,6 +111,7 @@ def get_args():
                         type=int, required=True)
     parser.add_argument('--zone', type=str, required=True)
     parser.add_argument('--domain', type=str, required=True)
+    parser.add_argument('--ttl', type=int, default=10)
     return parser.parse_args()
 
 
@@ -118,7 +119,7 @@ if __name__ == '__main__':
     args = get_args()
     t_main = Thread(target=main,
                     args=(args.interval, args.region, args.autoscaling_group,
-                          args.zone, args.domain))
+                          args.zone, args.domain, args.ttl))
     t_main.daemon = True
     t_main.start()
     start_health_check_server(args.interface, args.port)
