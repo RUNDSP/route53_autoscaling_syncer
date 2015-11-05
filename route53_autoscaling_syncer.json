@@ -48,7 +48,7 @@
     "SourceTarball": {
       "Description": "",
       "Type": "String",
-      "Default": "https://github.com/RUNDSP/route53_autoscaling_syncer/tarball/1.2.1"
+      "Default": "https://github.com/RUNDSP/route53_autoscaling_syncer/tarball/1.2.2"
     }
   },
   "Resources": {
