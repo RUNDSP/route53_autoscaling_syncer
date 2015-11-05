@@ -48,7 +48,7 @@
     "SourceTarball": {
       "Description": "",
       "Type": "String",
-      "Default": "https://github.com/RUNDSP/route53_autoscaling_syncer/tarball/1.2.1"
+      "Default": "https://github.com/RUNDSP/route53_autoscaling_syncer/tarball/1.2.2"
     }
   },
   "Resources": {
@@ -186,10 +186,13 @@
               "/etc/cfn/cfn-hup.conf": {
                 "content": {"Fn::Join": ["", [
                   "[main]\n",
-                  "stack=", {"Ref": "AWS::StackName"}, "\n",
+                  "stack=", {"Ref": "AWS::StackId"}, "\n",
                   "region=", {"Ref": "AWS::Region"}, "\n",
                   "interval=2\n"
-                ]]}
+                ]]},
+                "mode": "000400",
+                "owner": "root",
+                "group": "root"
               }
             },
             "services": {
