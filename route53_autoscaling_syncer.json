@@ -176,7 +176,7 @@
                   "[cfn-auto-reloader-hook]\n",
                   "triggers=post.update\n",
                   "path=Resources.r53asLC.Metadata.AWS::CloudFormation::Init\n",
-                  "action=/opt/aws/bin/cfn-init -v ",
+                  "action=/usr/local/bin/cfn-init -v ",
                   "         --stack ", {"Ref": "AWS::StackName"},
                   "         --resource r53asLC ",
                   "         --region ", {"Ref": "AWS::Region"}, "\n",
@@ -186,7 +186,9 @@
               "/etc/cfn/cfn-hup.conf": {
                 "content": {"Fn::Join": ["", [
                   "[main]\n",
-                  "stack=", {"Ref": "AWS::StackName"}, "\n"
+                  "stack=", {"Ref": "AWS::StackName"}, "\n",
+                  "region=", {"Ref": "AWS::Region"}, "\n",
+                  "interval=2\n"
                 ]]}
               }
             },
