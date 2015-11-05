@@ -186,10 +186,13 @@
               "/etc/cfn/cfn-hup.conf": {
                 "content": {"Fn::Join": ["", [
                   "[main]\n",
-                  "stack=", {"Ref": "AWS::StackName"}, "\n",
+                  "stack=", {"Ref": "AWS::StackId"}, "\n",
                   "region=", {"Ref": "AWS::Region"}, "\n",
                   "interval=2\n"
-                ]]}
+                ]]},
+                "mode": "000400",
+                "owner": "root",
+                "group": "root"
               }
             },
             "services": {
