@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-__version__ = '1.2.2'
+__version__ = '1.2.3'
 
 import argparse
 import datetime
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 last_success = None
 last_success_lock = Lock()
-max_seconds_healthy = 20
+max_seconds_healthy = 150
 
 
 class HealthCheckHTTPRequestHandler(BaseHTTPRequestHandler):
