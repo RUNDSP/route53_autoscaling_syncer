@@ -93,7 +93,7 @@ def main(interval, region, group_name, zone, dns_name, ttl):
             finally:
                 last_success_lock.release()
             time.sleep(interval)
-        except ex:
+        except Exception, ex:
             logger.error('Exception caught: ' + ex.message)
             continue
 
